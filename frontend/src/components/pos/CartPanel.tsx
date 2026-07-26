@@ -94,25 +94,38 @@ export default function CartPanel({ tables, submitting, onPlaceOrder, onEditItem
             })}
         </div>
 
-        {/* Delivery address — shown inline when delivery is selected. When the
-            customer has a saved default address it is pre-filled (street + fee
-            from the neighborhood); the cashier can still override the text. */}
+        {/* Delivery address — shown as a card pulled from the customer's
+            saved address (auto-filled on customer select). The cashier can
+            still override the street text below the card. */}
         {cart.orderType === 'delivery' && (
           <div className="space-y-2">
-            <div className="flex items-start gap-2">
-              <MapPin size={14} className="mt-1 text-gray-400 shrink-0" />
-              <input
-                type="text"
-                value={cart.deliveryAddress}
-                onChange={(e) => cart.setDeliveryAddress(e.target.value)}
-                placeholder={t('pos.deliveryAddress')}
-                className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none"
-              />
-            </div>
-            {cart.deliveryFee > 0 && (
-              <div className="flex items-center justify-between rounded-lg bg-brand/5 px-3 py-1.5 text-xs">
-                <span className="text-gray-500">{t('delivery.deliveryFee')}{cart.deliveryNeighborhoodName ? ` · ${cart.deliveryNeighborhoodName}` : ''}</span>
-                <span className="font-bold text-brand">{fmt(cart.deliveryFee)}</span>
+            {cart.deliveryAddressId ? (
+              <div className="rounded-lg border border-brand/30 bg-brand/5 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <MapPin size={14} className="mt-0.5 text-brand shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 break-words">{cart.deliveryAddress}</p>
+                      {cart.deliveryNeighborhoodName && (
+                        <p className="text-xs text-gray-500">{cart.deliveryNeighborhoodName}</p>
+                      )}
+                    </div>
+                  </div>
+                  {cart.deliveryFee > 0 && (
+                    <span className="shrink-0 text-xs font-bold text-brand">{fmt(cart.deliveryFee)}</span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <MapPin size={14} className="mt-1 text-gray-400 shrink-0" />
+                <input
+                  type="text"
+                  value={cart.deliveryAddress}
+                  onChange={(e) => cart.setDeliveryAddress(e.target.value)}
+                  placeholder={t('pos.deliveryAddress')}
+                  className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none"
+                />
               </div>
             )}
           </div>
@@ -223,18 +236,20 @@ export default function CartPanel({ tables, submitting, onPlaceOrder, onEditItem
           <span className="text-gray-500">{t('pos.items')}</span>
           <span className="font-medium">{cart.itemCount()}</span>
         </div>
-        <div className="flex justify-between mb-4 text-lg">
-          <span className="font-semibold text-gray-900">{t('pos.subtotal')}</span>
-          <span className="font-bold text-brand">
-            {fmt(cart.subtotal())}
-          </span>
+        <div className="flex justify-between mb-1 text-sm">
+          <span className="text-gray-500">{t('pos.subtotal')}</span>
+          <span className="font-medium text-gray-900">{fmt(cart.subtotal())}</span>
         </div>
         {cart.orderType === 'delivery' && cart.deliveryFee > 0 && (
-          <div className="flex justify-between mb-4 text-sm">
+          <div className="flex justify-between mb-2 text-sm">
             <span className="text-gray-500">{t('delivery.deliveryFee')}</span>
             <span className="font-medium text-gray-900">{fmt(cart.deliveryFee)}</span>
           </div>
         )}
+        <div className="flex justify-between mb-4 text-lg border-t border-gray-100 pt-2">
+          <span className="font-semibold text-gray-900">{t('pos.total')}</span>
+          <span className="font-bold text-brand">{fmt(cart.subtotal() + (cart.orderType === 'delivery' ? cart.deliveryFee : 0))}</span>
+        </div>
         <div className="flex gap-2">
           {canHold && (
             <Button variant="outline" onClick={handleHold} className="flex-1">

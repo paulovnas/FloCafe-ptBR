@@ -17,7 +17,7 @@ export function NeighborhoodsManager() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Neighborhood | null>(null);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', delivery_fee: '0', sort_order: '0' });
+  const [form, setForm] = useState({ name: '', delivery_fee: '0' });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -38,13 +38,13 @@ export function NeighborhoodsManager() {
   }, [load]);
 
   const openCreate = () => {
-    setForm({ name: '', delivery_fee: '0', sort_order: '0' });
+    setForm({ name: '', delivery_fee: '0' });
     setCreating(true);
     setEditing(null);
   };
 
   const openEdit = (n: Neighborhood) => {
-    setForm({ name: n.name, delivery_fee: String(n.delivery_fee), sort_order: String(n.sort_order || 0) });
+    setForm({ name: n.name, delivery_fee: String(n.delivery_fee) });
     setEditing(n);
     setCreating(false);
   };
@@ -62,13 +62,12 @@ export function NeighborhoodsManager() {
       return;
     }
     const fee = Number(form.delivery_fee);
-    const sortOrder = Number(form.sort_order) || 0;
     setSaving(true);
     try {
       if (editing) {
-        await api.put(`/neighborhoods/${editing.id}`, { name, delivery_fee: fee, sort_order: sortOrder, is_active: editing.is_active });
+        await api.put(`/neighborhoods/${editing.id}`, { name, delivery_fee: fee, is_active: editing.is_active });
       } else {
-        await api.post('/neighborhoods', { name, delivery_fee: fee, sort_order: sortOrder });
+        await api.post('/neighborhoods', { name, delivery_fee: fee });
       }
       toast.success(t('addresses.saved'));
       close();
@@ -161,28 +160,16 @@ export function NeighborhoodsManager() {
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">{t('neighborhoods.deliveryFee')}</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.delivery_fee}
-                  onChange={(e) => setForm({ ...form, delivery_fee: e.target.value })}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Sort order</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.sort_order}
-                  onChange={(e) => setForm({ ...form, sort_order: e.target.value })}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand"
-                />
-              </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t('neighborhoods.deliveryFee')}</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.delivery_fee}
+                onChange={(e) => setForm({ ...form, delivery_fee: e.target.value })}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand"
+              />
             </div>
           </div>
           <DialogFooter>

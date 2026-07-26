@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 import { countryName } from '@/lib/countries';
 import { parsePhone, dialCodeFor } from '@/lib/phone';
 import type { Customer } from '@/lib/types';
-import EditCustomerModal from './EditCustomerModal';
+import { CustomerFormSheet } from '@/components/customers/CustomerFormSheet';
 
 import { useI18n } from '@/hooks/useI18n';
 
@@ -236,13 +236,12 @@ export default function CustomerSearch({ onSelected, variant = 'default' }: Prop
               <X size={14} />
             </button>
           </div>
-          {editingCustomer && (
-            <EditCustomerModal
-              customer={customer}
-              onClose={() => setEditingCustomer(false)}
-              onSaved={(updated) => cart.setCustomer(updated)}
-            />
-          )}
+          <CustomerFormSheet
+            open={editingCustomer}
+            customer={customer}
+            onOpenChange={setEditingCustomer}
+            onSaved={(updated) => cart.setCustomer(updated)}
+          />
         </>
       );
     }
@@ -266,13 +265,12 @@ export default function CustomerSearch({ onSelected, variant = 'default' }: Prop
           </span>
         )}
         {hasTags && <TagBadges counts={customer.tag_counts!} t={t} />}
-        {editingCustomer && (
-          <EditCustomerModal
-            customer={customer}
-            onClose={() => setEditingCustomer(false)}
-            onSaved={(updated) => cart.setCustomer(updated)}
-          />
-        )}
+        <CustomerFormSheet
+          open={editingCustomer}
+          customer={customer}
+          onOpenChange={setEditingCustomer}
+          onSaved={(updated) => cart.setCustomer(updated)}
+        />
       </div>
     );
   }

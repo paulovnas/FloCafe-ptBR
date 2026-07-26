@@ -19,7 +19,7 @@ router.get('/', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: Requ
     const db = getDatabase();
     const includeInactive = req.query.include_inactive === '1';
     const rows = db.prepare(
-      `SELECT * FROM neighborhoods ${includeInactive ? '' : 'WHERE is_active = 1'} ORDER BY sort_order, name`,
+      `SELECT * FROM neighborhoods ${includeInactive ? '' : 'WHERE is_active = 1'} ORDER BY name COLLATE NOCASE ASC`,
     ).all();
     res.json({ neighborhoods: rows.map(shape) });
   } catch (error: any) {
@@ -45,7 +45,7 @@ router.get('/:id', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: R
 router.post('/', requireRole('owner', 'manager'), (req: Request, res: Response) => {
   try {
     const db = getDatabase();
-    const { name, delivery_fee, is_active, sort_order } = req.body;
+    const { name, delivery_fee, is_active } = req.body;
     const trimmed = String(name || '').trim();
     if (!trimmed) return res.status(400).json({ error: 'Name is required' });
 
@@ -60,7 +60,7 @@ router.post('/', requireRole('owner', 'manager'), (req: Request, res: Response) 
       trimmed,
       Number.isFinite(fee) && fee >= 0 ? fee : 0,
       is_active === false || is_active === 0 ? 0 : 1,
-      Number.isInteger(sort_order) ? sort_order : 0,
+      0,
       now(),
       now(),
     );
@@ -79,7 +79,7 @@ router.put('/:id', requireRole('owner', 'manager'), (req: Request, res: Response
     const existing = db.prepare('SELECT * FROM neighborhoods WHERE id = ?').get(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Neighborhood not found' });
 
-    const { name, delivery_fee, is_active, sort_order } = req.body;
+    const { name, delivery_fee, is_active } = req.body;
     const trimmed = name !== undefined ? String(name).trim() : (existing as any).name;
     if (!trimmed) return res.status(400).json({ error: 'Name is required' });
 
@@ -91,13 +91,12 @@ router.put('/:id', requireRole('owner', 'manager'), (req: Request, res: Response
     const fee = delivery_fee !== undefined ? Number(delivery_fee) : Number((existing as any).delivery_fee);
     db.prepare(`
       UPDATE neighborhoods
-      SET name = ?, delivery_fee = ?, is_active = ?, sort_order = ?, updated_at = ?
+      SET name = ?, delivery_fee = ?, is_active = ?, updated_at = ?
       WHERE id = ?
     `).run(
       trimmed,
       Number.isFinite(fee) && fee >= 0 ? fee : 0,
       is_active === false || is_active === 0 ? 0 : 1,
-      sort_order !== undefined ? (Number.isInteger(Number(sort_order)) ? Number(sort_order) : 0) : (existing as any).sort_order,
       now(),
       req.params.id,
     );

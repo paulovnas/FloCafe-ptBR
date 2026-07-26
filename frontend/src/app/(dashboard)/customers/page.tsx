@@ -2,28 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 
 
 import toast from 'react-hot-toast';
-import { Plus, Search, X, Edit, Wallet, History, TrendingUp, TrendingDown, AlertCircle, MapPin } from 'lucide-react';
+import { Plus, Search, X, Edit, Wallet, History, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 import type { Customer } from '@/lib/types';
-import { CustomerAddressesModal } from '@/components/customers/CustomerAddressesModal';
-import { countryName } from '@/lib/countries';
-import { dialCodeFor, parsePhone } from '@/lib/phone';
+import { CustomerFormSheet } from '@/components/customers/CustomerFormSheet';
 import { useI18n } from '@/hooks/useI18n';
 import { useFormatCurrency } from '@/hooks/useFormatCurrency';
 
 
 export default function CustomersPage() {
-  const { currentTenant } = useAuthStore();
   const { t } = useI18n();
   const fmt = useFormatCurrency();
-  const defaultCountry = currentTenant?.country || 'IN';
-  const dialCode = dialCodeFor(defaultCountry) || '+91';
   const searchParams = useSearchParams();
   const router = useRouter();
   const filter = searchParams.get('filter');
@@ -33,15 +27,12 @@ export default function CustomersPage() {
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState('name');
   const [sortOrder, setSortOrder] = useState<'asc'|'desc'>('asc');
-  const [showForm, setShowForm] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-
-  const [form, setForm] = useState({ name: '', phone: '', email: '', country_code: dialCode });
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetCustomer, setSheetCustomer] = useState<Customer | null>(null);
 
   const [ledgerCustomer, setLedgerCustomer] = useState<Customer | null>(null);
   const [ledgerData, setLedgerData] = useState<{ balance: number; transactions: { id: number; type: string; amount: number; description: string; created_at: string; expires_at?: string }[] } | null>(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
-  const [addressesCustomer, setAddressesCustomer] = useState<Customer | null>(null);
 
   const openLedger = async (c: Customer) => {
     setLedgerCustomer(c);
@@ -83,42 +74,17 @@ export default function CustomersPage() {
   useEffect(() => { fetchCustomers(); }, [search, filter, sortField, sortOrder]);
 
   const openAdd = () => {
-    setEditingCustomer(null);
-
-    setForm({ name: '', phone: '', email: '', country_code: dialCode });
-    setShowForm(true);
+    setSheetCustomer(null);
+    setSheetOpen(true);
   };
 
   const openEdit = (c: Customer) => {
-    setEditingCustomer(c);
-
-    setForm({ name: c.name, phone: c.phone || '', email: c.email || '', country_code: c.country_code || dialCode });
-    setShowForm(true);
+    setSheetCustomer(c);
+    setSheetOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const parsed = parsePhone(form.phone, defaultCountry);
-    if (!parsed) {
-      toast.error(t('pos.invalidPhone', { country: countryName(defaultCountry) }));
-      return;
-    }
-    const payload = { ...form, phone: parsed.e164, country_code: parsed.countryCode };
-    try {
-      if (editingCustomer) {
-        await api.put(`/customers/${editingCustomer.id}`, payload);
-        toast.success(t('customer.updated'));
-      } else {
-        await api.post('/customers', payload);
-        toast.success(t('customer.added'));
-      }
-      setShowForm(false);
-      fetchCustomers();
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      toast.error(error.response?.data?.error || t('customer.saveFailed'));
-    }
-  };
+  const handleSheetSaved = () => { fetchCustomers(); };
+
 
   const SortIcon = ({ field }: { field: string }) => {
     if (sortField !== field) return <span className="text-gray-300 w-3 inline-block ml-1 opacity-0 group-hover:opacity-100 transition-opacity">↕</span>;
@@ -183,7 +149,6 @@ export default function CustomersPage() {
                 {t('customer.loyalty')} <SortIcon field="loyalty" />
               </th>
               <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">{t('customers.columnActions')}</th>
-              <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">{t('addresses.title')}</th>
               <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">{t('customers.columnLedger')}</th>
             </tr>
           </thead>
@@ -227,11 +192,6 @@ export default function CustomersPage() {
                   </Button>
                 </td>
                 <td className="p-4 text-center">
-                  <Button variant="ghost" size="sm" onClick={() => setAddressesCustomer(c)} title={t('addresses.title')}>
-                    <MapPin size={14} />
-                  </Button>
-                </td>
-                <td className="p-4 text-center">
                   <Button variant="ghost" size="sm" onClick={() => openLedger(c)} title={t('customer.viewLedgerTitle')}>
                     <History size={14} />
                   </Button>
@@ -243,13 +203,6 @@ export default function CustomersPage() {
         {customers.length === 0 && <p className="text-center text-gray-500 py-12">{t('customers.empty')}</p>}
       </div>
 
-      {addressesCustomer && (
-        <CustomerAddressesModal
-          customerId={addressesCustomer.id}
-          customerName={addressesCustomer.name}
-          onClose={() => setAddressesCustomer(null)}
-        />
-      )}
 
       {/* Loyalty Ledger Modal */}
       {ledgerCustomer && (
@@ -321,27 +274,12 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">{editingCustomer ? t('customer.edit') : t('customer.add')}</h2>
-              <button onClick={() => setShowForm(false)}><X size={20} className="text-gray-400" /></button>
-            </div>
-            <form onSubmit={handleSave} className="space-y-4">
-              <input type="text" placeholder={t('customer.name')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-brand" required />
-              <div className="flex items-stretch gap-2">
-                <input type="tel" placeholder={dialCode ? `${dialCode} ${t('customer.phone')}` : t('customer.phone')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="flex-1 px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-brand" required />
-              </div>
-              <input type="email" placeholder={`${t('customer.email')} (${t('common.optional')})`} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-brand" />
-              <Button type="submit" className="w-full">{editingCustomer ? t('customer.update') : t('customer.add')}</Button>
-            </form>
-          </div>
-        </div>
-      )}
+      <CustomerFormSheet
+        open={sheetOpen}
+        customer={sheetCustomer}
+        onOpenChange={setSheetOpen}
+        onSaved={handleSheetSaved}
+      />
     </div>
   );
 }
