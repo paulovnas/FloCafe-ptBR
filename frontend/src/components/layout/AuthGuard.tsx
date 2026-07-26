@@ -6,11 +6,11 @@ import { useAuthStore } from '@/store/auth';
 import api from '@/lib/api';
 import { useI18n } from '@/hooks/useI18n';
 
-export function getLandingPage(): string {
-  return '/pos';
+export function getLandingPage(role?: string): string {
+  return role === 'waiter' ? '/waiter' : '/pos';
 }
 
-const PUBLIC_PATHS = ['/kds', '/kds-standalone', '/auth/login', '/auth/register', '/auth/recover', '/setup'];
+const PUBLIC_PATHS = ['/kds', '/kds-standalone', '/waiter', '/auth/login', '/auth/register', '/auth/recover', '/setup'];
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();

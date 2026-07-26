@@ -64,7 +64,7 @@ function LoginContent() {
 
   useEffect(() => {
     if (user && currentTenant) {
-      router.push(getLandingPage());
+      router.push(getLandingPage(currentTenant.role));
     } else if (user && tenants.length === 1) {
       // Only one business — auto-select it
       handleTenantSelect(tenants[0].id);

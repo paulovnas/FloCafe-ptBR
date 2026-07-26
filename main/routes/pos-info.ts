@@ -1,8 +1,8 @@
 /**
  * GET /api/pos-info
- * Returns the POS access URLs (mDNS + local IP) so the app can render a QR code.
- * A second cashier scans this from Settings → POS Workflow to open the same
- * POS on another device on the local network.
+ * Returns LAN access URLs (mDNS + local IP) and QR codes for either the full
+ * POS or the mobile waiter order pad. `?mode=waiter` selects `/waiter`;
+ * omitting it preserves the existing full-POS response.
  */
 import { Router, Request, Response } from 'express';
 import QRCode from 'qrcode';
@@ -10,17 +10,18 @@ import { getLocalIP, getAllLocalIPs, getServerPort } from '../server';
 
 const router = Router();
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   const port = getServerPort();
   const ip = getLocalIP();
   const allIps = getAllLocalIPs();
+  const pathname = req.query.mode === 'waiter' ? '/waiter' : '';
 
-  const mdnsUrl = `http://flo.local:${port}`;
-  const ipUrl   = `http://${ip}:${port}`;
+  const mdnsUrl = `http://flo.local:${port}${pathname}`;
+  const ipUrl   = `http://${ip}:${port}${pathname}`;
   const qrUrl   = ipUrl;
 
   const ipsData = await Promise.all(allIps.map(async (localIp) => {
-    const url = `http://${localIp}:${port}`;
+    const url = `http://${localIp}:${port}${pathname}`;
     try {
       const qr_data = await QRCode.toDataURL(url, { errorCorrectionLevel: 'M', width: 256 });
       return { ip: localIp, url, qr_data };

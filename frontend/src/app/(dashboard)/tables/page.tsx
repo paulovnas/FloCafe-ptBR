@@ -12,12 +12,28 @@ import { parsePhone, dialCodeFor } from '@/lib/phone';
 import { useI18n } from '@/hooks/useI18n';
 import { ORDER_STATUS_LABEL_KEYS, ITEM_STATUS_LABEL_KEYS } from '@/lib/i18n-enums';
 
-const statusColors: Record<string, string> = {
-  available: 'bg-green-500',
-  occupied: 'bg-red-500',
-  reserved: 'bg-yellow-500',
-  cleaning: 'bg-gray-500',
-  held: 'bg-blue-500',
+// Whole-card color cue per status, consistent with the waiter order pad:
+// available green, occupied amber, reserved blue, cleaning grey, held violet.
+const CARD_STYLES: Record<string, string> = {
+  available: 'border-emerald-300 bg-emerald-50',
+  occupied: 'border-amber-300 bg-amber-50',
+  reserved: 'border-sky-300 bg-sky-50',
+  cleaning: 'border-slate-300 bg-slate-100',
+  held: 'border-violet-300 bg-violet-50',
+};
+const STATUS_DOT: Record<string, string> = {
+  available: 'bg-emerald-500',
+  occupied: 'bg-amber-500',
+  reserved: 'bg-sky-500',
+  cleaning: 'bg-slate-500',
+  held: 'bg-violet-500',
+};
+const STATUS_BADGE: Record<string, string> = {
+  available: 'bg-emerald-100 text-emerald-800',
+  occupied: 'bg-amber-100 text-amber-800',
+  reserved: 'bg-sky-100 text-sky-800',
+  cleaning: 'bg-slate-200 text-slate-600',
+  held: 'bg-violet-100 text-violet-800',
 };
 
 const TABLE_STATUS_LABEL: Record<string, string> = {
@@ -331,17 +347,17 @@ export default function TablesPage() {
 
             return (
               <div key={table.id}
-                className={`bg-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow ${
-                  hasOrders ? 'border-l-4 border-l-brand' : ''
-                } ${!table.is_active ? 'opacity-60' : ''}`}>
+                className={`rounded-xl border hover:shadow-md transition-shadow ${CARD_STYLES[table.status] ?? 'border-gray-100 bg-white'} ${!table.is_active ? 'opacity-60' : ''}`}>
                 {/* Table header */}
-                <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+                <div className="px-4 py-3 border-b border-black/5 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${statusColors[table.status]}`} />
+                    <div className={`w-3 h-3 rounded-full ${STATUS_DOT[table.status] ?? 'bg-gray-400'}`} />
                     <h3 className="font-bold text-gray-900">{table.name}</h3>
                     <span className="text-xs text-gray-400">· {t('tables.capacitySeats', { count: table.capacity })}</span>
                   </div>
-                  <span className="text-xs text-gray-400">{t(TABLE_STATUS_LABEL[table.status] ?? table.status)}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[table.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {t(TABLE_STATUS_LABEL[table.status] ?? table.status)}
+                  </span>
                 </div>
 
                 {/* Orders section */}
@@ -413,11 +429,13 @@ export default function TablesPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {tables.map((table) => (
             <div key={table.id}
-              className={`bg-white rounded-xl p-5 border border-gray-100 text-center hover:shadow-md transition-shadow ${!table.is_active ? 'opacity-60' : ''}`}>
-              <div className={`w-3 h-3 rounded-full ${statusColors[table.status]} mx-auto mb-3`} />
+              className={`rounded-xl p-5 border text-center hover:shadow-md transition-shadow ${CARD_STYLES[table.status] ?? 'border-gray-100 bg-white'} ${!table.is_active ? 'opacity-60' : ''}`}>
+              <div className={`mx-auto mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_BADGE[table.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                <span className={`w-2 h-2 rounded-full ${STATUS_DOT[table.status] ?? 'bg-gray-400'}`} />
+                {t(TABLE_STATUS_LABEL[table.status] ?? table.status)}
+              </div>
               <h3 className="font-bold text-lg text-gray-900">{table.name}</h3>
               <p className="text-sm text-gray-500">{t('tables.capacitySeats', { count: table.capacity })}</p>
-              <p className="text-xs text-gray-400 mt-1">{t(TABLE_STATUS_LABEL[table.status] ?? table.status)}</p>
               {table.floor && <p className="text-xs text-gray-400">{table.floor}</p>}
               {table.status === 'reserved' && table.reservation_customer_name && (
                 <p className="text-xs text-yellow-700 font-medium mt-1 truncate">{table.reservation_customer_name}</p>

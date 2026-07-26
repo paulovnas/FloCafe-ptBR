@@ -33,6 +33,7 @@
     "test:cors": "ts-node --transpile-only -P tests/tsconfig.json tests/cors-security.test.ts",
     "test:smoke": "node tests/run-electron-node-test.cjs tests/smoke-test.test.ts",
     "test:kds-integration": "node tests/run-electron-node-test.cjs tests/kds-integration.test.ts",
+    "test:waiter-ordering": "node tests/run-electron-node-test.cjs tests/waiter-ordering.test.ts",
     "test:e2e": "npm run build && npm run build:frontend && cd frontend && npx playwright install chromium && npx playwright test",
     "test:release-config": "ts-node --transpile-only -P tests/tsconfig.json tests/release-config.test.ts",
     "test:notes-validation": "ts-node --transpile-only -P tests/tsconfig.json tests/order-notes-validation.test.ts",

@@ -30,13 +30,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      // KDS routes (dashboard-embedded /kds and standalone /kds-standalone,
-      // reached via the station's own QR code) render their own inline login
-      // form once their user state goes null — don't hard-navigate them to
-      // the POS /auth/login, or a session timeout strands the station behind
-      // the wrong login screen and forces a QR re-scan to get back to KDS.
-      const isKdsPath = window.location.pathname.startsWith('/kds');
+      // KDS routes render their own inline login. The waiter order pad also
+      // owns its login screen; reload it after clearing stale tenant state
+      // instead of stranding the device on the desktop POS login route.
+      const pathname = window.location.pathname;
+      const isKdsPath = pathname.startsWith('/kds');
+      const isWaiterPath = pathname.startsWith('/waiter');
       localStorage.removeItem('token');
+      if (isWaiterPath) {
+        localStorage.removeItem('tenant');
+        window.location.reload();
+        return Promise.reject(error);
+      }
       if (isKdsPath) return Promise.reject(error);
       // Don't redirect when already on the login page — let the login handler show the error
       if (!window.location.pathname.includes('/auth/login')) {

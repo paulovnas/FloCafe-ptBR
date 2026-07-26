@@ -90,24 +90,30 @@ export type ServerInfo = {
 export async function fetchServerInfo(baseUrl = '', timeoutMs = 1500): Promise<ServerInfo> {
   const empty: ServerInfo = { language: null, country: null, kdsDefaultView: null };
   if (typeof window === 'undefined') return empty;
-  try {
-    const res = await fetch(`${baseUrl}/api/kds/info`, {
-      signal: AbortSignal.timeout(timeoutMs),
-      cache: 'no-store',
-    });
-    if (!res.ok) return empty;
-    const data = (await res.json()) as {
-      language?: string | null;
-      country?: string | null;
-      kds_default_view?: string | null;
-    };
-    return {
-      language: data.language === 'es' ? 'es' : data.language === 'pt' ? 'pt' : data.language === 'en' ? 'en' : null,
-      country: data.country || null,
-      kdsDefaultView:
-        data.kds_default_view === 'kanban' ? 'kanban' : data.kds_default_view === 'tabs' ? 'tabs' : null,
-    };
-  } catch {
-    return empty;
+
+  for (const endpoint of ['/api/kds/info', '/api/auth/public-info']) {
+    try {
+      const res = await fetch(`${baseUrl}${endpoint}`, {
+        signal: AbortSignal.timeout(timeoutMs),
+        cache: 'no-store',
+      });
+      if (!res.ok) continue;
+
+      const data = (await res.json()) as {
+        language?: string | null;
+        country?: string | null;
+        kds_default_view?: string | null;
+      };
+      return {
+        language: data.language === 'es' ? 'es' : data.language === 'pt' ? 'pt' : data.language === 'en' ? 'en' : null,
+        country: data.country || null,
+        kdsDefaultView:
+          data.kds_default_view === 'kanban' ? 'kanban' : data.kds_default_view === 'tabs' ? 'tabs' : null,
+      };
+    } catch {
+      // Try the endpoint exposed by the other local server.
+    }
   }
+
+  return empty;
 }

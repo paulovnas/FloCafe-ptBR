@@ -321,6 +321,26 @@ function resetSuccessfulLogin(ip: string) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── GET /api/auth/public-info ─────────────────────────────────────────────────
+// Minimal unauthenticated metadata needed to localize pre-login screens.
+
+router.get('/public-info', (_req: Request, res: Response) => {
+  try {
+    const db = getDatabase();
+    const rows = db.prepare(
+      "SELECT key, value FROM settings WHERE key IN ('language', 'country')"
+    ).all() as { key: string; value: string }[];
+    const settings = Object.fromEntries(rows.map(row => [row.key, row.value]));
+    res.json({
+      language: settings.language || 'en',
+      country: settings.country || null,
+    });
+  } catch (error: unknown) {
+    console.error('[API] Failed to load public tenant info:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── POST /api/auth/login ──────────────────────────────────────────────────────
 
 router.post('/login', authRateLimit(), (req: Request, res: Response) => {

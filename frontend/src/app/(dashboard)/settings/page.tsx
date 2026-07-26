@@ -565,7 +565,7 @@ export default function SettingsPage() {
     }).finally(() => setKdsInfoLoading(false));
   };
 
-  // ── POS pairing (add a cashier device) ────────────────────────────────────
+  // ── LAN pairing (full POS or mobile waiter order pad) ─────────────────────
   const [posInfo, setPosInfo] = useState<{
     mdns_url: string;
     ip_url: string;
@@ -574,10 +574,18 @@ export default function SettingsPage() {
     ips_data?: { ip: string; url: string; qr_data: string | null }[];
   } | null>(null);
   const [posInfoLoading, setPosInfoLoading] = useState(false);
+  const [posPairingTarget, setPosPairingTarget] = useState<'pos' | 'waiter'>('pos');
+  const selectPosPairingTarget = (target: 'pos' | 'waiter') => {
+    if (target === posPairingTarget) return;
+    setPosPairingTarget(target);
+    setPosInfo(null);
+  };
 
   const fetchPosInfo = () => {
     setPosInfoLoading(true);
-    api.get('/pos-info').then((res) => {
+    api.get('/pos-info', {
+      params: posPairingTarget === 'waiter' ? { mode: 'waiter' } : undefined,
+    }).then((res) => {
       setPosInfo(res.data);
     }).catch(() => {
       toast.error(t('settings.posInfoFetchFailed'));
@@ -2101,15 +2109,35 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Add a cashier — pair another device onto the same POS over the local network */}
+            {/* Pair a full POS or the touch-first waiter order pad over the LAN */}
             <div className="bg-white rounded-xl border border-gray-100 p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Smartphone size={20} className="text-gray-500" />
-                <h2 className="font-semibold text-gray-900">{t('settings.posPairing')}</h2>
+                <h2 className="font-semibold text-gray-900">{t('settings.localDevicePairing')}</h2>
               </div>
-              <p className="text-sm text-gray-500 mb-5">
-                {t('settings.posPairingHint')}
+              <p className="text-sm text-gray-500 mb-4">
+                {posPairingTarget === 'waiter' ? t('settings.waiterPairingHint') : t('settings.posPairingHint')}
               </p>
+              <div className="grid grid-cols-2 gap-2 mb-5 rounded-lg bg-gray-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => selectPosPairingTarget('pos')}
+                  disabled={posInfoLoading}
+                  aria-pressed={posPairingTarget === 'pos'}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition ${posPairingTarget === 'pos' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                  {t('settings.fullPosDevice')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectPosPairingTarget('waiter')}
+                  disabled={posInfoLoading}
+                  aria-pressed={posPairingTarget === 'waiter'}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition ${posPairingTarget === 'waiter' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                  {t('settings.waiterDevice')}
+                </button>
+              </div>
 
               {posInfoLoading && (
                 <div className="flex items-center justify-center py-10">
@@ -2158,7 +2186,7 @@ export default function SettingsPage() {
                     <div className="flex flex-col sm:flex-row gap-6 items-start">
                       <div className="shrink-0">
                         {posInfo.qr_data_url ? (
-                          <img src={posInfo.qr_data_url} alt={t('settings.posQrAlt')} className="w-48 h-48 rounded-xl border border-gray-200" />
+                          <img src={posInfo.qr_data_url} alt={posPairingTarget === 'waiter' ? t('settings.waiterQrAlt') : t('settings.posQrAlt')} className="w-48 h-48 rounded-xl border border-gray-200" />
                         ) : (
                           <div className="w-48 h-48 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400">
                             <QrCode size={48} />
@@ -2195,11 +2223,11 @@ export default function SettingsPage() {
               {!posInfo && !posInfoLoading && (
                 <>
                   <p className="text-sm text-gray-500 mb-3">
-                    {t('settings.posLoadHint')}
+                    {posPairingTarget === 'waiter' ? t('settings.waiterLoadHint') : t('settings.posLoadHint')}
                   </p>
                   <button onClick={fetchPosInfo}
                     className="px-4 py-2 text-sm bg-brand text-white rounded-lg hover:opacity-90 font-medium">
-                    {t('settings.loadPosInfo')}
+                    {posPairingTarget === 'waiter' ? t('settings.loadWaiterInfo') : t('settings.loadPosInfo')}
                   </button>
                 </>
               )}
