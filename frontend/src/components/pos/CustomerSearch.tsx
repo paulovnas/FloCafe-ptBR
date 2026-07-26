@@ -132,9 +132,35 @@ export default function CustomerSearch({ onSelected, variant = 'default' }: Prop
     }
   };
 
+  // When a delivery order picks up a customer, auto-fill the customer's
+  // default address (street + number + neighborhood fee) so the cashier
+  // doesn't retype it. Non-delivery orders ignore the address entirely.
+  const applyCustomerDelivery = (customer: Customer | null) => {
+    if (cart.orderType !== 'delivery') {
+      cart.setDeliveryAddressId(null);
+      cart.setDeliveryFee(0);
+      cart.setDeliveryNeighborhoodName(null);
+      return;
+    }
+    const addr = customer?.default_address;
+    if (addr) {
+      const street = [addr.street, addr.number].filter(Boolean).join(', ');
+      cart.setDeliveryAddress(street || '');
+      cart.setDeliveryAddressId(addr.id);
+      cart.setDeliveryFee(Number(addr.delivery_fee) || 0);
+      cart.setDeliveryNeighborhoodName(addr.neighborhood_name || null);
+    } else {
+      cart.setDeliveryAddress('');
+      cart.setDeliveryAddressId(null);
+      cart.setDeliveryFee(0);
+      cart.setDeliveryNeighborhoodName(null);
+    }
+  };
+
   const handleSelectMatched = () => {
     if (!matched) return;
     cart.setCustomer(matched);
+    applyCustomerDelivery(matched);
     setPhone(''); setName(''); setMatched(null); setSearched(false);
     onSelected?.();
   };
@@ -156,6 +182,7 @@ export default function CustomerSearch({ onSelected, variant = 'default' }: Prop
     try {
       const { data } = await api.post('/customers', { name: name.trim(), phone: parsed.e164, country_code: parsed.countryCode });
       cart.setCustomer(data.customer);
+      applyCustomerDelivery(data.customer);
       setPhone(''); setName(''); setMatched(null); setSearched(false);
       toast.success(t('pos.customerCreated'));
       onSelected?.();
@@ -176,7 +203,7 @@ export default function CustomerSearch({ onSelected, variant = 'default' }: Prop
     if (isNew && name.trim() && phone.trim()) { handleCreate(); }
   };
 
-  const handleClear = () => cart.setCustomer(null);
+  const handleClear = () => { cart.setCustomer(null); applyCustomerDelivery(null); };
 
   // ── Shared input classes ───────────────────────────────────────────────────
   const baseInput = 'px-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none text-sm';

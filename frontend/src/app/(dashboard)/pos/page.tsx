@@ -227,6 +227,7 @@ export default function POSPage() {
           type: cart.orderType,
           guest_count: cart.guestCount,
           special_instructions: cart.orderNotes || undefined,
+          delivery_address_id: cart.orderType === 'delivery' ? cart.deliveryAddressId : undefined,
           items: cart.items.map((item) => ({
             product_id: item.product.id,
             quantity: item.quantity,
@@ -267,6 +268,7 @@ export default function POSPage() {
         type: cart.orderType,
         guest_count: cart.guestCount,
         special_instructions: cart.orderNotes || undefined,
+        delivery_address_id: cart.orderType === 'delivery' ? cart.deliveryAddressId : undefined,
         items: cart.items.map((item) => ({
           product_id: item.product.id,
           quantity: item.quantity,

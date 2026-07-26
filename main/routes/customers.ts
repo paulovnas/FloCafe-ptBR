@@ -110,6 +110,19 @@ router.get('/', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: Requ
   }
 });
 
+function fetchCustomerAddresses(customerId: string) {
+  const db = getDatabase();
+  return db.prepare(`
+    SELECT ca.id, ca.customer_id, ca.label, ca.street, ca.number, ca.complement, ca.reference,
+           ca.neighborhood_id, ca.is_default, ca.created_at, ca.updated_at,
+           n.name AS neighborhood_name, n.delivery_fee AS delivery_fee
+    FROM customer_addresses ca
+    LEFT JOIN neighborhoods n ON n.id = ca.neighborhood_id
+    WHERE ca.customer_id = ?
+    ORDER BY ca.is_default DESC, ca.id ASC
+  `).all(customerId);
+}
+
 router.get('/:id', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: Request, res: Response) => {
   try {
     const db = getDatabase();
@@ -128,7 +141,13 @@ router.get('/:id', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: R
       SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC LIMIT 10
     `).all(req.params.id);
 
-    res.json({ customer: { ...customer, walletBalance, loyaltyHistory, recentOrders } });
+    const addresses = fetchCustomerAddresses(req.params.id as string).map((a: any) => ({
+      ...a,
+      delivery_fee: Number(a.delivery_fee) || 0,
+      is_default: Boolean(a.is_default),
+    }));
+
+    res.json({ customer: { ...customer, walletBalance, loyaltyHistory, recentOrders, addresses } });
   } catch (error: any) {
     console.error("[API] Internal error:", error);
     res.status(500).json({ error: "Internal server error" });

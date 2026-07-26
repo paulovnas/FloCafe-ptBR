@@ -9,6 +9,9 @@ interface CartState {
   customer: Customer | null;
   guestCount: number;
   deliveryAddress: string;
+  deliveryAddressId: number | null;
+  deliveryFee: number;
+  deliveryNeighborhoodName: string | null;
   orderNotes: string;
 
   addItem: (product: Product, quantity?: number, addons?: Addon[], specialInstructions?: string) => void;
@@ -23,6 +26,9 @@ interface CartState {
   setCustomer: (customer: Customer | null) => void;
   setGuestCount: (count: number) => void;
   setDeliveryAddress: (address: string) => void;
+  setDeliveryAddressId: (id: number | null) => void;
+  setDeliveryFee: (fee: number) => void;
+  setDeliveryNeighborhoodName: (name: string | null) => void;
   setOrderNotes: (notes: string) => void;
 
   subtotal: () => number;
@@ -52,8 +58,10 @@ export const useCartStore = create<CartState>((set, get) => ({
   customer: null,
   guestCount: 1,
   deliveryAddress: '',
+  deliveryAddressId: null,
+  deliveryFee: 0,
+  deliveryNeighborhoodName: null,
   orderNotes: '',
-
   addItem: (product, quantity = 1, addons = [], specialInstructions = '') => {
     const items = get().items;
     const itemId = generateCartItemId(product.id, addons, specialInstructions);
@@ -121,19 +129,22 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   clearCart: () => {
-    set({ items: [], tableId: null, customerId: null, customer: null, guestCount: 1, deliveryAddress: '', orderNotes: '' });
+    set({ items: [], tableId: null, customerId: null, customer: null, guestCount: 1, deliveryAddress: '', deliveryAddressId: null, deliveryFee: 0, deliveryNeighborhoodName: null, orderNotes: '' });
   },
 
   loadItems: (items, tableId, customerId, guestCount, orderNotes) => {
     set({ items, tableId, customerId, guestCount, orderNotes: orderNotes || '' });
   },
 
-  setOrderType: (type) => set({ orderType: type, deliveryAddress: type !== 'delivery' ? '' : undefined }),
+  setOrderType: (type) => set({ orderType: type, deliveryAddress: type !== 'delivery' ? '' : get().deliveryAddress, deliveryAddressId: type !== 'delivery' ? null : get().deliveryAddressId, deliveryFee: type !== 'delivery' ? 0 : get().deliveryFee, deliveryNeighborhoodName: type !== 'delivery' ? null : get().deliveryNeighborhoodName }),
   setTableId: (id) => set({ tableId: id }),
   setCustomerId: (id) => set({ customerId: id }),
   setCustomer: (customer) => set({ customer, customerId: customer?.id ?? null }),
   setGuestCount: (count) => set({ guestCount: count }),
   setDeliveryAddress: (address) => set({ deliveryAddress: address }),
+  setDeliveryAddressId: (id) => set({ deliveryAddressId: id }),
+  setDeliveryFee: (fee) => set({ deliveryFee: fee }),
+  setDeliveryNeighborhoodName: (name) => set({ deliveryNeighborhoodName: name }),
   setOrderNotes: (notes) => set({ orderNotes: notes }),
 
   subtotal: () => {

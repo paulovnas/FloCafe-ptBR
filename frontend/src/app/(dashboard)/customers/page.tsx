@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 
 
 import toast from 'react-hot-toast';
-import { Plus, Search, X, Edit, Wallet, History, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+import { Plus, Search, X, Edit, Wallet, History, TrendingUp, TrendingDown, AlertCircle, MapPin } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 import type { Customer } from '@/lib/types';
+import { CustomerAddressesModal } from '@/components/customers/CustomerAddressesModal';
 import { countryName } from '@/lib/countries';
 import { dialCodeFor, parsePhone } from '@/lib/phone';
 import { useI18n } from '@/hooks/useI18n';
@@ -40,6 +41,7 @@ export default function CustomersPage() {
   const [ledgerCustomer, setLedgerCustomer] = useState<Customer | null>(null);
   const [ledgerData, setLedgerData] = useState<{ balance: number; transactions: { id: number; type: string; amount: number; description: string; created_at: string; expires_at?: string }[] } | null>(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [addressesCustomer, setAddressesCustomer] = useState<Customer | null>(null);
 
   const openLedger = async (c: Customer) => {
     setLedgerCustomer(c);
@@ -181,6 +183,7 @@ export default function CustomersPage() {
                 {t('customer.loyalty')} <SortIcon field="loyalty" />
               </th>
               <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">{t('customers.columnActions')}</th>
+              <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">{t('addresses.title')}</th>
               <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">{t('customers.columnLedger')}</th>
             </tr>
           </thead>
@@ -224,6 +227,11 @@ export default function CustomersPage() {
                   </Button>
                 </td>
                 <td className="p-4 text-center">
+                  <Button variant="ghost" size="sm" onClick={() => setAddressesCustomer(c)} title={t('addresses.title')}>
+                    <MapPin size={14} />
+                  </Button>
+                </td>
+                <td className="p-4 text-center">
                   <Button variant="ghost" size="sm" onClick={() => openLedger(c)} title={t('customer.viewLedgerTitle')}>
                     <History size={14} />
                   </Button>
@@ -234,6 +242,14 @@ export default function CustomersPage() {
         </table>
         {customers.length === 0 && <p className="text-center text-gray-500 py-12">{t('customers.empty')}</p>}
       </div>
+
+      {addressesCustomer && (
+        <CustomerAddressesModal
+          customerId={addressesCustomer.id}
+          customerName={addressesCustomer.name}
+          onClose={() => setAddressesCustomer(null)}
+        />
+      )}
 
       {/* Loyalty Ledger Modal */}
       {ledgerCustomer && (

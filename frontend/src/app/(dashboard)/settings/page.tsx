@@ -19,6 +19,7 @@ import { MasterPinPrompt } from '@/components/settings/MasterPinPrompt';
 import { HealthCheckDialog } from '@/components/settings/HealthCheckDialog';
 import { InitializeDatabaseDialog } from '@/components/settings/InitializeDatabaseDialog';
 import { WhatsAppEnableCard } from '@/components/settings/WhatsAppEnableCard';
+import { NeighborhoodsManager } from '@/components/settings/NeighborhoodsManager';
 import type { HealthCheckReport } from '@/types/electron';
 import { useI18n } from '@/hooks/useI18n';
 import { useFormatDate } from '@/hooks/useFormatDate';
@@ -1723,6 +1724,7 @@ export default function SettingsPage() {
             {/* WhatsApp opt-in lives under Operations because the receive-bill
                 workflow is what the cashier touches every time a customer pays. */}
             <SettingsNavItem label={t('settings.tabWhatsapp')} value="whatsapp" active={activeTab} onClick={setActiveTab} />
+            <SettingsNavItem label={t('neighborhoods.title')} value="neighborhoods" active={activeTab} onClick={setActiveTab} />
 
             {/* Customers group */}
             <div className="hidden md:block px-3 pt-4 pb-2 mt-3 mb-1 border-b border-gray-100">
@@ -3314,6 +3316,12 @@ export default function SettingsPage() {
           </div>
         </TabsContent>
 
+        {/* Neighborhoods / delivery fees — under Operations */}
+        <TabsContent value="neighborhoods">
+          <div className="pb-6 max-w-3xl space-y-6">
+            <NeighborhoodsManager />
+          </div>
+        </TabsContent>
         <TabsContent value="integrations">
           <div className="pb-6 max-w-3xl space-y-6">
             <div className="space-y-6">

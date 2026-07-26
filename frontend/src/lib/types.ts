@@ -114,6 +114,32 @@ export interface Table {
   reservation_customer_phone?: string | null;
 }
 
+export interface Neighborhood {
+  id: number;
+  name: string;
+  delivery_fee: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CustomerAddress {
+  id: number;
+  customer_id: string | number;
+  label: string | null;
+  street: string | null;
+  number: string | null;
+  complement: string | null;
+  reference: string | null;
+  neighborhood_id: number | null;
+  neighborhood_name?: string | null;
+  delivery_fee?: number;
+  is_default: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Customer {
   id: string | number;
   phone: string;
@@ -130,6 +156,8 @@ export interface Customer {
   favourite_dishes?: string[] | null;
   tag_counts?: Record<string, number> | null;
   address?: string | null;
+  addresses?: CustomerAddress[];
+  default_address?: CustomerAddress | null;
 }
 
 export interface Order {
@@ -143,6 +171,13 @@ export interface Order {
   tax_amount: number;
   discount_amount: number;
   delivery_charge: number;
+  delivery_address_id?: number | null;
+  delivery_street?: string | null;
+  delivery_number?: string | null;
+  delivery_complement?: string | null;
+  delivery_reference?: string | null;
+  delivery_neighborhood_id?: number | null;
+  delivery_neighborhood_name?: string | null;
   packaging_charge?: number;
   round_off?: number;
   tax_breakdown?: { title: string; rate: number; amount: number }[] | null;

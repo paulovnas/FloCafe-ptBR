@@ -193,7 +193,7 @@ router.get('/:id', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: R
 
 router.post('/', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: Request, res: Response) => {
   try {
-    const { table_id, customer_id, type, guest_count, special_instructions, packaging_charge, delivery_charge, items } = req.body;
+    const { table_id, customer_id, type, guest_count, special_instructions, packaging_charge, delivery_charge, delivery_address_id, items } = req.body;
     // Always the authenticated caller, never client-supplied — trusting a
     // client-sent user_id would let staff spoof order attribution, and the
     // frontend has in fact never sent one, so every order got user_id=NULL.
@@ -221,6 +221,52 @@ router.post('/', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: Req
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }
+    // Delivery: snapshot the chosen customer address + its neighborhood fee onto
+    // the order. We store denormalized copies (street/number/neighborhood_name/
+    // fee) so editing the address or the neighborhood fee later never mutates a
+    // historical order. The fee is derived from the neighborhood unless the
+    // caller explicitly overrides delivery_charge.
+    let deliverySnapshot: {
+      addressId: number | null;
+      street: string | null;
+      number: string | null;
+      complement: string | null;
+      reference: string | null;
+      neighborhoodId: number | null;
+      neighborhoodName: string | null;
+      fee: number;
+    } | null = null;
+    if (type === 'delivery') {
+      if (delivery_address_id) {
+        const addr = db.prepare(`
+          SELECT ca.*, n.name AS neighborhood_name, n.delivery_fee AS neighborhood_fee
+          FROM customer_addresses ca
+          LEFT JOIN neighborhoods n ON n.id = ca.neighborhood_id
+          WHERE ca.id = ? AND ca.customer_id = ?
+        `).get(delivery_address_id, customer_id || null) as any;
+        if (!addr) {
+          return res.status(400).json({ error: 'Delivery address not found for this customer' });
+        }
+        const fee = (delivery_charge === undefined || delivery_charge === null)
+          ? (Number(addr.neighborhood_fee) || 0)
+          : (Number(delivery_charge) || 0);
+        deliverySnapshot = {
+          addressId: addr.id,
+          street: addr.street,
+          number: addr.number,
+          complement: addr.complement,
+          reference: addr.reference,
+          neighborhoodId: addr.neighborhood_id ?? null,
+          neighborhoodName: addr.neighborhood_name ?? null,
+          fee,
+        };
+      } else if (delivery_charge === undefined || delivery_charge === null) {
+        deliverySnapshot = { addressId: null, street: null, number: null, complement: null, reference: null, neighborhoodId: null, neighborhoodName: null, fee: 0 };
+      } else {
+        deliverySnapshot = { addressId: null, street: null, number: null, complement: null, reference: null, neighborhoodId: null, neighborhoodName: null, fee: Number(delivery_charge) || 0 };
+      }
+    }
+
     const { order, orderItems } = withTxn(() => {
       // Generate order number inside transaction to prevent race conditions
       const orderNumber = generateOrderNumber();
@@ -237,12 +283,19 @@ router.post('/', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: Req
         state_code: settings.state_code || '',
       };
 
+    const effectiveDeliveryCharge = deliverySnapshot ? deliverySnapshot.fee : (delivery_charge || 0);
       const orderResult = db.prepare(`
         INSERT INTO orders (order_number, table_id, customer_id, user_id, type, guest_count, special_instructions,
-          packaging_charge, delivery_charge, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+          packaging_charge, delivery_charge, delivery_address_id, delivery_street, delivery_number,
+          delivery_complement, delivery_reference, delivery_neighborhood_id, delivery_neighborhood_name,
+          status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
       `).run(orderNumber, table_id || null, customer_id || null, authenticatedUserId, type, guest_count || null,
-        special_instructions || null, packaging_charge || 0, delivery_charge || 0, now(), now());
+        special_instructions || null, packaging_charge || 0, effectiveDeliveryCharge,
+        deliverySnapshot?.addressId ?? null, deliverySnapshot?.street ?? null, deliverySnapshot?.number ?? null,
+        deliverySnapshot?.complement ?? null, deliverySnapshot?.reference ?? null,
+        deliverySnapshot?.neighborhoodId ?? null, deliverySnapshot?.neighborhoodName ?? null,
+        now(), now());
 
       const orderId = orderResult.lastInsertRowid;
 
@@ -329,7 +382,7 @@ router.post('/', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: Req
         }
       }
 
-      const preRoundTotal = subtotal + exclusiveTax + (delivery_charge || 0) + (packaging_charge || 0);
+      const preRoundTotal = subtotal + exclusiveTax + effectiveDeliveryCharge + (packaging_charge || 0);
       const total = Math.round(preRoundTotal);
       const roundOff = total - preRoundTotal;
 

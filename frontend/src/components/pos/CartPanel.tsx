@@ -94,17 +94,27 @@ export default function CartPanel({ tables, submitting, onPlaceOrder, onEditItem
             })}
         </div>
 
-        {/* Delivery address — shown inline when delivery is selected */}
+        {/* Delivery address — shown inline when delivery is selected. When the
+            customer has a saved default address it is pre-filled (street + fee
+            from the neighborhood); the cashier can still override the text. */}
         {cart.orderType === 'delivery' && (
-          <div className="flex items-center gap-2">
-            <MapPin size={14} className="text-gray-400 shrink-0" />
-            <input
-              type="text"
-              value={cart.deliveryAddress}
-              onChange={(e) => cart.setDeliveryAddress(e.target.value)}
-              placeholder={t('pos.deliveryAddress')}
-              className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none"
-            />
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <MapPin size={14} className="mt-1 text-gray-400 shrink-0" />
+              <input
+                type="text"
+                value={cart.deliveryAddress}
+                onChange={(e) => cart.setDeliveryAddress(e.target.value)}
+                placeholder={t('pos.deliveryAddress')}
+                className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none"
+              />
+            </div>
+            {cart.deliveryFee > 0 && (
+              <div className="flex items-center justify-between rounded-lg bg-brand/5 px-3 py-1.5 text-xs">
+                <span className="text-gray-500">{t('delivery.deliveryFee')}{cart.deliveryNeighborhoodName ? ` · ${cart.deliveryNeighborhoodName}` : ''}</span>
+                <span className="font-bold text-brand">{fmt(cart.deliveryFee)}</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -219,6 +229,12 @@ export default function CartPanel({ tables, submitting, onPlaceOrder, onEditItem
             {fmt(cart.subtotal())}
           </span>
         </div>
+        {cart.orderType === 'delivery' && cart.deliveryFee > 0 && (
+          <div className="flex justify-between mb-4 text-sm">
+            <span className="text-gray-500">{t('delivery.deliveryFee')}</span>
+            <span className="font-medium text-gray-900">{fmt(cart.deliveryFee)}</span>
+          </div>
+        )}
         <div className="flex gap-2">
           {canHold && (
             <Button variant="outline" onClick={handleHold} className="flex-1">

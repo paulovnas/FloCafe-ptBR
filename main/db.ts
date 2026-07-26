@@ -1277,20 +1277,77 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
     },
   },
   {
-    version: 34,
-    name: 'add_order_items_voided_at',
+    version: 35,
+    name: 'customer_addresses_and_neighborhoods',
     up: () => {
-      // Issue #150: voiding an in-progress (preparing/ready) item marks it
-      // status='voided' instead of hard-cancelling it, so the kitchen display
-      // can show it struck-through for a grace period before it drops off the
-      // board. voided_at is that timestamp anchor.
-      if (!getColumns(db, 'order_items').includes('voided_at')) {
-        db.exec(`ALTER TABLE order_items ADD COLUMN voided_at TEXT DEFAULT NULL`);
+      // Delivery-by-neighborhood: neighborhoods carry a delivery fee; customer
+      // addresses (multiple per customer, one default) reference a neighborhood;
+      // delivery orders snapshot the chosen address + fee so historical orders
+      // never change if the customer later edits the address or the fee.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS neighborhoods (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          delivery_fee REAL NOT NULL DEFAULT 0,
+          is_active INTEGER DEFAULT 1,
+          sort_order INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS customer_addresses (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          customer_id TEXT NOT NULL,
+          label TEXT,
+          street TEXT,
+          number TEXT,
+          complement TEXT,
+          reference TEXT,
+          neighborhood_id INTEGER,
+          is_default INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (customer_id) REFERENCES customers(id),
+          FOREIGN KEY (neighborhood_id) REFERENCES neighborhoods(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_customer_addresses_customer
+          ON customer_addresses(customer_id);
+        CREATE INDEX IF NOT EXISTS idx_neighborhoods_active
+          ON neighborhoods(is_active, sort_order);
+      `);
+
+      // Snapshot of the delivery destination on each order, so the order keeps
+      // its address + fee even if the customer's address or the neighborhood's
+      // fee is edited later.
+      const orderCols = getColumns(db, 'orders');
+      if (!orderCols.includes('delivery_address_id')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN delivery_address_id INTEGER REFERENCES customer_addresses(id)`);
       }
+      if (!orderCols.includes('delivery_street')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN delivery_street TEXT`);
+      }
+      if (!orderCols.includes('delivery_number')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN delivery_number TEXT`);
+      }
+      if (!orderCols.includes('delivery_complement')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN delivery_complement TEXT`);
+      }
+      if (!orderCols.includes('delivery_reference')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN delivery_reference TEXT`);
+      }
+      if (!orderCols.includes('delivery_neighborhood_id')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN delivery_neighborhood_id INTEGER REFERENCES neighborhoods(id)`);
+      }
+      if (!orderCols.includes('delivery_neighborhood_name')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN delivery_neighborhood_name TEXT`);
+      }
+
+      // Bills mirror delivery_charge already (db.ts:1611). The order snapshot
+      // columns above are the source of truth for what was charged.
     },
   },
 ];
-
 function syncBackupBeforeMigration(fromVersion: number, toVersion: number): void {
   try {
     const dbPath = getDbPath();

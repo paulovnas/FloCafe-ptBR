@@ -25,6 +25,8 @@ import { databaseToolsRoutes } from './database-tools';
 import { menuCsvRoutes } from './menu-csv';
 import { heldOrderRoutes } from './held-orders';
 import { whatsappRoutes } from './whatsapp';
+import { neighborhoodRoutes } from './neighborhoods';
+import { customerAddressRoutes } from './customer-addresses';
 import { getDatabase, now, parseItemJson, attachEffectiveAddons, withTxn, getSettingValue, getCachedPairingCode, setCachedPairingCode, verifyPin } from '../db';
 import { checkPinRateLimit } from './orders';
 import { cloudSync } from '../services/cloud-sync';
@@ -80,6 +82,8 @@ export function registerRoutes(app: Express): void {
   app.use('/api/menu-csv', menuCsvRoutes);
   app.use('/api/held-orders', heldOrderRoutes);
   app.use('/api/whatsapp', whatsappRoutes);
+  app.use('/api/neighborhoods', neighborhoodRoutes);
+  app.use('/api/customer-addresses', customerAddressRoutes);
 
   // Tax preview
   app.post('/api/tax/preview', async (req, res) => {
@@ -143,9 +147,40 @@ export function registerRoutes(app: Express): void {
         ORDER BY name LIMIT 20
       `).all(searchTerm, searchTerm, searchTerm) as any[];
 
+      const customerIds = customers.map((c) => c.id);
+      const addressesByCustomer = new Map<string, any>();
+      if (customerIds.length) {
+        const placeholders = customerIds.map(() => '?').join(',');
+        const addresses = db.prepare(`
+          SELECT ca.*, n.name AS neighborhood_name, n.delivery_fee
+          FROM customer_addresses ca
+          LEFT JOIN neighborhoods n ON n.id = ca.neighborhood_id
+          WHERE ca.customer_id IN (${placeholders})
+          ORDER BY ca.is_default DESC, ca.id ASC
+        `).all(...customerIds) as any[];
+        for (const a of addresses) {
+          // First row per customer is the default (ORDER BY is_default DESC).
+          if (!addressesByCustomer.has(a.customer_id)) {
+            addressesByCustomer.set(a.customer_id, {
+              id: a.id,
+              label: a.label,
+              street: a.street,
+              number: a.number,
+              complement: a.complement,
+              reference: a.reference,
+              neighborhood_id: a.neighborhood_id,
+              neighborhood_name: a.neighborhood_name,
+              delivery_fee: Number(a.delivery_fee) || 0,
+              is_default: Boolean(a.is_default),
+            });
+          }
+        }
+      }
+
       const results = customers.map((c) => ({
         ...parseCustomer(c),
         wallet_balance: getWalletBalance(c.id),
+        default_address: addressesByCustomer.get(c.id) || null,
       }));
 
       res.json(results);
