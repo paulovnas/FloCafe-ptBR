@@ -1633,5 +1633,7 @@
   "delivery.address": "Delivery address",
   "delivery.changeAddress": "Change address",
   "delivery.noAddress": "No delivery address set",
-  "delivery.noDefaultAddress": "This customer has no saved addresses. Add one to set a delivery fee."
+  "delivery.noDefaultAddress": "This customer has no saved addresses. Add one to set a delivery fee.",
+  "delivery.noAddresses": "This customer has no saved addresses. Add one in the customer panel.",
+  "delivery.selectAddress": "Select delivery address"
 }

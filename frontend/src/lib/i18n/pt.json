@@ -1633,5 +1633,7 @@
   "delivery.address": "Endereço de entrega",
   "delivery.changeAddress": "Trocar endereço",
   "delivery.noAddress": "Nenhum endereço de entrega definido",
-  "delivery.noDefaultAddress": "Este cliente não tem endereços salvos. Adicione um para definir a taxa de entrega."
+  "delivery.noDefaultAddress": "Este cliente não tem endereços salvos. Adicione um para definir a taxa de entrega.",
+  "delivery.noAddresses": "Este cliente não tem endereços salvos. Adicione um no painel do cliente.",
+  "delivery.selectAddress": "Selecione o endereço de entrega"
 }

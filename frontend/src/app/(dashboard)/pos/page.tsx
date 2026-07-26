@@ -194,6 +194,10 @@ export default function POSPage() {
       setShowTablePicker(true);
       return;
     }
+    if (cart.orderType === 'delivery' && !cart.deliveryAddressId) {
+      toast.error(t('delivery.noAddress'));
+      return;
+    }
 
     // Prepaid stores collect payment before finishing the order.
     if (shouldTakePaymentNow) {

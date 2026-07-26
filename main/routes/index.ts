@@ -148,7 +148,7 @@ export function registerRoutes(app: Express): void {
       `).all(searchTerm, searchTerm, searchTerm) as any[];
 
       const customerIds = customers.map((c) => c.id);
-      const addressesByCustomer = new Map<string, any>();
+      const addressesByCustomer = new Map<string, any[]>();
       if (customerIds.length) {
         const placeholders = customerIds.map(() => '?').join(',');
         const addresses = db.prepare(`
@@ -159,29 +159,33 @@ export function registerRoutes(app: Express): void {
           ORDER BY ca.is_default DESC, ca.id ASC
         `).all(...customerIds) as any[];
         for (const a of addresses) {
-          // First row per customer is the default (ORDER BY is_default DESC).
-          if (!addressesByCustomer.has(a.customer_id)) {
-            addressesByCustomer.set(a.customer_id, {
-              id: a.id,
-              label: a.label,
-              street: a.street,
-              number: a.number,
-              complement: a.complement,
-              reference: a.reference,
-              neighborhood_id: a.neighborhood_id,
-              neighborhood_name: a.neighborhood_name,
-              delivery_fee: Number(a.delivery_fee) || 0,
-              is_default: Boolean(a.is_default),
-            });
-          }
+          const shaped = {
+            id: a.id,
+            label: a.label,
+            street: a.street,
+            number: a.number,
+            complement: a.complement,
+            reference: a.reference,
+            neighborhood_id: a.neighborhood_id,
+            neighborhood_name: a.neighborhood_name,
+            delivery_fee: Number(a.delivery_fee) || 0,
+            is_default: Boolean(a.is_default),
+          };
+          if (!addressesByCustomer.has(a.customer_id)) addressesByCustomer.set(a.customer_id, []);
+          addressesByCustomer.get(a.customer_id)!.push(shaped);
         }
       }
 
-      const results = customers.map((c) => ({
-        ...parseCustomer(c),
-        wallet_balance: getWalletBalance(c.id),
-        default_address: addressesByCustomer.get(c.id) || null,
-      }));
+      const results = customers.map((c) => {
+        const list = addressesByCustomer.get(c.id) || [];
+        return {
+          ...parseCustomer(c),
+          wallet_balance: getWalletBalance(c.id),
+          addresses: list,
+          default_address: list[0] || null,
+        };
+      });
+
 
       res.json(results);
     } catch (error: any) {

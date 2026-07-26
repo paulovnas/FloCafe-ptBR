@@ -2,7 +2,7 @@
 
 import {
   ShoppingCart, UtensilsCrossed, Package, Truck,
-  Plus, Minus, Trash2, Pause, MapPin, SquarePen,
+  Plus, Minus, Trash2, Pause, SquarePen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/store/cart';
@@ -11,8 +11,9 @@ import { useAuthStore } from '@/store/auth';
 import { usePosSettingsStore } from '@/store/pos-settings';
 import { useI18n } from '@/hooks/useI18n';
 import toast from 'react-hot-toast';
-import type { Table, Order, OrderItem, CartItem } from '@/lib/types';
+import type { Table, Order, OrderItem, CartItem, CustomerAddress } from '@/lib/types';
 import { useFormatCurrency } from '@/hooks/useFormatCurrency';
+import { DeliveryAddressPicker } from '@/components/pos/DeliveryAddressPicker';
 
 interface Props {
   tables: Table[];
@@ -40,6 +41,26 @@ export default function CartPanel({ tables, submitting, onPlaceOrder, onEditItem
   const isRestaurant = (currentTenant?.business_type ?? 'restaurant') === 'restaurant';
   const fmt = useFormatCurrency();
   const canHold = isRestaurant && cart.orderType === 'dine_in' && cart.tableId && cart.items.length > 0 && billingType === 'postpaid';
+
+  // Apply a saved customer address to the cart's delivery fields.
+  const applyAddress = (a: CustomerAddress) => {
+    const street = [a.street, a.number].filter(Boolean).join(', ');
+    cart.setDeliveryAddress(street || '');
+    cart.setDeliveryAddressId(a.id);
+    cart.setDeliveryFee(Number(a.delivery_fee) || 0);
+    cart.setDeliveryNeighborhoodName(a.neighborhood_name || null);
+  };
+
+  // Switching to delivery with a customer but no address selected yet:
+  // auto-pick the customer's default (or first) address.
+  const handleOrderTypeChange = (type: 'dine_in' | 'takeaway' | 'delivery') => {
+    cart.setOrderType(type);
+    if (type === 'delivery' && !cart.deliveryAddressId && cart.customer) {
+      const list = cart.customer.addresses || [];
+      const def = list.find((a) => a.is_default) || list[0];
+      if (def) applyAddress(def);
+    }
+  };
 
   const handleHold = async () => {
     if (!cart.tableId) {
@@ -80,7 +101,7 @@ export default function CartPanel({ tables, submitting, onPlaceOrder, onEditItem
               return (
                 <button
                   key={type}
-                  onClick={() => cart.setOrderType(type)}
+                  onClick={() => handleOrderTypeChange(type)}
                   className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition-colors ${
                     cart.orderType === type
                       ? 'bg-white text-brand shadow-sm'
@@ -94,40 +115,19 @@ export default function CartPanel({ tables, submitting, onPlaceOrder, onEditItem
             })}
         </div>
 
-        {/* Delivery address — shown as a card pulled from the customer's
-            saved address (auto-filled on customer select). The cashier can
-            still override the street text below the card. */}
+        {/* Delivery address — picker listing the customer's saved addresses.
+            No free-text input: the destination must be a saved address. The
+            cashier can add/edit addresses via the customer sidebar. */}
         {cart.orderType === 'delivery' && (
           <div className="space-y-2">
-            {cart.deliveryAddressId ? (
-              <div className="rounded-lg border border-brand/30 bg-brand/5 p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 min-w-0">
-                    <MapPin size={14} className="mt-0.5 text-brand shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 break-words">{cart.deliveryAddress}</p>
-                      {cart.deliveryNeighborhoodName && (
-                        <p className="text-xs text-gray-500">{cart.deliveryNeighborhoodName}</p>
-                      )}
-                    </div>
-                  </div>
-                  {cart.deliveryFee > 0 && (
-                    <span className="shrink-0 text-xs font-bold text-brand">{fmt(cart.deliveryFee)}</span>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-2">
-                <MapPin size={14} className="mt-1 text-gray-400 shrink-0" />
-                <input
-                  type="text"
-                  value={cart.deliveryAddress}
-                  onChange={(e) => cart.setDeliveryAddress(e.target.value)}
-                  placeholder={t('pos.deliveryAddress')}
-                  className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none"
-                />
-              </div>
-            )}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-500">{t('delivery.selectAddress')}</span>
+            </div>
+            <DeliveryAddressPicker
+              addresses={cart.customer?.addresses || []}
+              selectedId={cart.deliveryAddressId}
+              onSelect={applyAddress}
+            />
           </div>
         )}
       </div>

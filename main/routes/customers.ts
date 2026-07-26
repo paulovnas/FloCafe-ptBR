@@ -147,7 +147,7 @@ router.get('/:id', requireRole('owner', 'manager', 'cashier', 'waiter'), (req: R
       is_default: Boolean(a.is_default),
     }));
 
-    res.json({ customer: { ...customer, walletBalance, loyaltyHistory, recentOrders, addresses } });
+    res.json({ customer: { ...customer, walletBalance, loyaltyHistory, recentOrders, addresses, default_address: addresses[0] || null } });
   } catch (error: any) {
     console.error("[API] Internal error:", error);
     res.status(500).json({ error: "Internal server error" });

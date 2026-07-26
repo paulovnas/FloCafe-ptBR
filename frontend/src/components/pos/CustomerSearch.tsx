@@ -142,7 +142,7 @@ export default function CustomerSearch({ onSelected, variant = 'default' }: Prop
       cart.setDeliveryNeighborhoodName(null);
       return;
     }
-    const addr = customer?.default_address;
+    const addr = customer?.default_address || customer?.addresses?.[0];
     if (addr) {
       const street = [addr.street, addr.number].filter(Boolean).join(', ');
       cart.setDeliveryAddress(street || '');

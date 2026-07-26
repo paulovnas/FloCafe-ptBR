@@ -1633,5 +1633,7 @@
   "delivery.address": "Dirección de entrega",
   "delivery.changeAddress": "Cambiar dirección",
   "delivery.noAddress": "No hay dirección de entrega",
-  "delivery.noDefaultAddress": "Este cliente no tiene direcciones guardadas. Agregá una para definir el envío."
+  "delivery.noDefaultAddress": "Este cliente no tiene direcciones guardadas. Agregá una para definir el envío.",
+  "delivery.noAddresses": "Este cliente no tiene direcciones guardadas. Agregá una en el panel del cliente.",
+  "delivery.selectAddress": "Seleccioná la dirección de entrega"
 }
